@@ -1,6 +1,6 @@
 FMM tutorial
 ============
-List of Notebook:
+#List of Notebook:
 * Direct Summation
 * Multipole Expansion
 * Multi-level Multipole Expansion
