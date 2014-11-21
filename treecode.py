@@ -69,7 +69,6 @@ def split_cell(x, y, z, p, cells, n_crit):
     cells: the list of cells
     n_crit: maximum number of leaves in a single cell
     """
-    print '==start split cell {}=='.format(p)
     for i in range(n_crit):
         l = cells[p].leaf[i]
         octant = (x[l] > cells[p].x_c) + ((y[l] > cells[p].y_c) << 1) \
@@ -81,7 +80,36 @@ def split_cell(x, y, z, p, cells, n_crit):
         c = cells[p].child[octant]
         cells[c].leaf[cells[c].nleaf] = l
         cells[c].nleaf += 1
-        print '>>>particle {} is reallocated in cell {}'.format(i, c)
         if cells[c].nleaf >= n_crit:
             split_cell(x, y, z, c, cells, n_crit)
-    print '==end split cell {}=='.format(p)
+
+def upward_sweep(cells, p, c):
+    """Calculate parent cell p's multipole array based on child cell c's multipoles
+    
+    Arguments:
+    cells: the list of cells
+    p:       parent cell index in cells list
+    c:       child cell index in cells list
+    """
+    dx = cells[p].x_c - cells[c].x_c
+    dy = cells[p].y_c - cells[c].y_c
+    dz = cells[p].z_c - cells[c].z_c
+    cells[p].multipole[0] += cells[c].multipole[0]
+    cells[p].multipole[1] += cells[c].multipole[1] + dx * cells[c].multipole[0]
+    cells[p].multipole[2] += cells[c].multipole[2] + dy * cells[c].multipole[0]
+    cells[p].multipole[3] += cells[c].multipole[3] + dz * cells[c].multipole[0]
+    cells[p].multipole[4] += cells[c].multipole[4] + dx * cells[c].multipole[1] \
+                                                   + dx * dx * cells[c].multipole[0] / 2
+    cells[p].multipole[5] += cells[c].multipole[5] + dy * cells[c].multipole[2] \
+                                                   + dy * dy * cells[c].multipole[0] / 2
+    cells[p].multipole[6] += cells[c].multipole[6] + dz * cells[c].multipole[3] \
+                                                   + dz * dz * cells[c].multipole[0] / 2
+    cells[p].multipole[7] += cells[c].multipole[7] + (dx * cells[c].multipole[2] \
+                                                   +  dy * cells[c].multipole[1] \
+                                                   +  dx * dy * cells[c].multipole[0]) / 2
+    cells[p].multipole[8] += cells[c].multipole[8] + (dy * cells[c].multipole[3] \
+                                                   +  dz * cells[c].multipole[2] \
+                                                   +  dy * dz * cells[c].multipole[0]) / 2
+    cells[p].multipole[9] += cells[c].multipole[9] + (dz * cells[c].multipole[1] \
+                                                   +  dx * cells[c].multipole[3] \
+                                                   +  dz * dx * cells[c].multipole[0]) / 2
