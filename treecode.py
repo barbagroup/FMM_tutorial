@@ -83,7 +83,36 @@ def split_cell(x, y, z, p, cells, n_crit):
         if cells[c].nleaf >= n_crit:
             split_cell(x, y, z, c, cells, n_crit)
 
-def upward_sweep(cells, p, c):
+def get_multipole(x, y, z, m, p, cells, n_crit):
+    """Calculate multipole arrays for all twig cells under cell p. If leaf number of 
+       cell p is bigger than n_crit (non-twig), traverse down recursively. Otherwise
+       (twig), calculate the multipole arrays for twig cell p.
+    
+    Arguments:
+    p:       cell index in cells list
+    """
+    if cells[p].nleaf >= n_crit:
+        for c in range(8):
+            if cells[p].nchild & (1 << c):
+                get_multipole(x, y, z, m, cells[p].child[c], cells, n_crit)
+    else:
+        for l in range(cells[p].nleaf):
+            j = cells[p].leaf[l]
+            dx = cells[p].x_c - x[j]
+            dy = cells[p].y_c - y[j]
+            dz = cells[p].z_c - z[j]
+            cells[p].multipole[0] += m[j]
+            cells[p].multipole[1] += m[j] * dx
+            cells[p].multipole[2] += m[j] * dy
+            cells[p].multipole[3] += m[j] * dz
+            cells[p].multipole[4] += m[j] * dx * dx / 2
+            cells[p].multipole[5] += m[j] * dy * dy / 2
+            cells[p].multipole[6] += m[j] * dz * dz / 2
+            cells[p].multipole[7] += m[j] * dx * dy / 2
+            cells[p].multipole[8] += m[j] * dy * dz / 2
+            cells[p].multipole[9] += m[j] * dz * dx / 2   
+
+def upward_sweep(p, c, cells):
     """Calculate parent cell p's multipole array based on child cell c's multipoles
     
     Arguments:
