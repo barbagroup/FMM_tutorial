@@ -26,13 +26,14 @@ def direct_sum(n, x, y, z, m):
     """
     phi = numpy.zeros(n)
     epsilon = 0.01
+    eps2 = epsilon**2
+    phi = -m/epsilon
     for i in range(n):
-        phi[i] = -m[i]/epsilon
         for j in range(n):
             dx = x[i] - x[j]
             dy = y[i] - y[j]
             dz = z[i] - z[j]
-            r = numpy.sqrt(dx**2 + dy**2 + dz**2 + epsilon**2)
+            r = numpy.sqrt(dx**2 + dy**2 + dz**2 + eps2)
             phi[i] += m[j]/r
     return phi
 
