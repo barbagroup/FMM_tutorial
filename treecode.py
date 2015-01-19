@@ -12,7 +12,7 @@ class Cell():
         self.child = numpy.zeros(8, dtype=numpy.int)         # array of child index
         self.multipole = numpy.zeros(10, dtype=numpy.float64)  # multipole array
 
-def direct_sum(n, x, y, z, m):
+def direct_sum(n, x, y, z, m, epsilon):
     """Calculate the gravitational potential at each target particle i using direct
        summation method.
 
@@ -25,9 +25,8 @@ def direct_sum(n, x, y, z, m):
         phi: array of the gravitational potential at target points 
     """
     phi = numpy.zeros(n)
-    epsilon = 0.01
-    eps2 = epsilon**2
     phi = -m/epsilon
+    eps2 = epsilon**2
     for i in range(n):
         for j in range(n):
             dx = x[i] - x[j]
