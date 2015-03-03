@@ -15,7 +15,7 @@
 }
 
 div.cell { /* set cell width */
-    width: 810px;
+    width: 750px;
 }
 
 div #notebook { /* centre the content */
