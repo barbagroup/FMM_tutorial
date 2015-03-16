@@ -1,5 +1,37 @@
 import numpy
 
+class Particle():
+    """The class for a particle.
+    
+    Arguments:
+        n_source: the total number of source particles
+        range: the range of random coordinates x,y,z, default=1
+    
+    Attributes:
+        x, y, z: coordinates of the particle
+        m: mass of the particle
+        phi: the gravitational potential of the particle
+        
+    """
+    def __init__(self, n_source, range=1):
+        """Initialize the particle with random coordinates in (0, range) or
+        (range, 0), a uniform mass depending on n_source, and a zero potential.
+        
+        """
+        self.x = range * numpy.random.random()
+        self.y = range * numpy.random.random()
+        self.z = range * numpy.random.random()
+        self.m = 1.0/n_source
+        self.phi = 0.
+        
+    def distance(self, other):
+        """Return the distance between two particles.
+        
+        """
+        return numpy.sqrt((self.x-other.x)**2 + (self.y-other.y)**2 
+                                              + (self.z-other.z)**2)
+
+
 class Cell():
     """The class for a cell.
     
