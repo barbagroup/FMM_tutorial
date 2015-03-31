@@ -2,42 +2,159 @@ import numpy
 from matplotlib import pyplot, rcParams
 from mpl_toolkits.mplot3d import Axes3D
 
-# customizing plot parameters
-rcParams['figure.dpi'] = 100
-rcParams['font.size'] = 14
-rcParams['font.family'] = 'StixGeneral'
-
-
-class Particle():
-    """The class for a particle.
+class Point():
+    """The class for a point.
     
     Arguments:
-        n_source: the total number of source particles
-        range: the range of random coordinates x,y,z, default=1
+        coords: a three-element list, containing the 3d coordinates of the point
+        domain: the domain of random generated coordinates x,y,z, default=1.0
     
     Attributes:
-        x, y, z: coordinates of the particle
+        x, y, z: coordinates of the point
+    """
+    def __init__(self, coords=[], domain=1.0):
+        if coords:
+            assert len(coords) == 3, "the size of coords should be 3."
+            self.x = coords[0]
+            self.y = coords[1]
+            self.z = coords[2]
+        else:
+            self.x = domain * numpy.random.random()
+            self.y = domain * numpy.random.random()
+            self.z = domain * numpy.random.random()
+            
+    def distance(self, other):
+        return numpy.sqrt((self.x-other.x)**2 + (self.y-other.y)**2
+                                          + (self.z-other.z)**2)
+
+
+class Particle(Point):
+    """The derived class for a particle, inheriting the base class "Point".
+    
+    Attributes:
         m: mass of the particle
         phi: the gravitational potential of the particle
-        
     """
-    def __init__(self, n_source, range=1):
-        """Initialize the particle with random coordinates in (0, range) or
-        (range, 0), a uniform mass depending on n_source, and a zero potential.
-        
-        """
-        self.x = range * numpy.random.random()
-        self.y = range * numpy.random.random()
-        self.z = range * numpy.random.random()
-        self.m = 1.0/n_source
+    
+    def __init__(self, coords=[], domain=1.0, m=1.0):
+        Point.__init__(self, coords, domain)
+        self.m = m
         self.phi = 0.
-        
-    def distance(self, other):
-        """Return the distance between two particles.
-        
-        """
-        return numpy.sqrt((self.x-other.x)**2 + (self.y-other.y)**2 
-                                              + (self.z-other.z)**2)
+
+class Cell():
+    """The class for a cell.
+    
+    Arguments:
+      n_crit: maximum number of particles in a leaf cell
+    
+    Attributes:
+      nleaf (int): number of leaves in the cell
+      leaf (array of int): array of leaf index
+      nchild (int):  an integer whose last 8 bits is used to keep track of the empty child cells
+      child (array of int): array of child index
+      parent (int): index of parent cell
+      x, y, z (float): coordinates of the cell's center
+      r (float): radius of the cell (half of the side length for cubic cell)
+      multipole (array of float): multipole array of the cell
+      
+    """
+    def __init__(self, n_crit):
+        self.nleaf = 0        # number of leaves
+        self.leaf = numpy.zeros(n_crit, dtype=numpy.int)     # array of leaf index
+        self.nchild = 0       # binary counter to keep track of empty cells
+        self.child = numpy.zeros(8, dtype=numpy.int)         # array of child index
+        self.parent = 0       # index of parent cell
+        self.x = self.y = self.z = 0.                    # center of the cell
+        self.r = 0.           # radius of the cell
+        self.multipole = numpy.zeros(10, dtype=numpy.float)  # multipole array
+
+
+def add_child(octant, p, cells, n_crit):
+    """Add a cell to the end of cells list as a child of p, initialize the center and radius of the child cell c, and establish mutual reference between child c and parent p.
+    
+    Arguments:
+      octant: reference to one of the eight divisions in three dimensions
+      p: parent cell index in cells list
+      cells: the list of cells
+      n_crit: maximum number of leaves in a single cell
+ 
+    """
+    # create a new cell instance
+    cells.append(Cell(n_crit))
+    # the last element of the cells list is the new child c
+    c = len(cells) - 1
+    # geometry relationship between parent and child
+    cells[c].r = cells[p].r / 2
+    cells[c].x = cells[p].x + cells[c].r * ((octant & 1) * 2 - 1)
+    cells[c].y = cells[p].y + cells[c].r * ((octant & 2) - 1    )
+    cells[c].z = cells[p].z + cells[c].r * ((octant & 4) / 2 - 1)
+    # establish mutual reference in the cells list
+    cells[c].parent = p
+    cells[p].child[octant] = c
+    cells[p].nchild = (cells[p].nchild | (1 << octant))
+
+
+def split_cell(particles, p, cells, n_crit):
+    """Loop in parent p's leafs and reallocate the particles to subcells. If a subcell has not been created in that octant, create one using add_child. If the subcell c's leaf number exceeds n_crit, split the subcell c recursively.
+    
+    Arguments: 
+      particles: the list of particles
+      p: parent cell index in cells list
+      cells: the list of cells
+      n_crit: maximum number of leaves in a single cell
+    
+    """
+    # loop in the particles stored in the parent cell that you want to split
+    for l in cells[p].leaf:
+        octant = (particles[l].x > cells[p].x) + ((particles[l].y > cells[p].y) << 1) \
+               + ((particles[l].z > cells[p].z) << 2)   # find the particle's octant
+        # if there is not a child cell in the particles octant, then create one
+        if not cells[p].nchild & (1 << octant):
+            add_child(octant, p, cells, n_crit)
+        # reallocate the particle in the child cell
+        c = cells[p].child[octant]
+        cells[c].leaf[cells[c].nleaf] = l
+        cells[c].nleaf += 1
+        # check if the child reach n_crit
+        if cells[c].nleaf >= n_crit:
+            split_cell(particles, c, cells, n_crit)
+
+
+def build_tree(particles, root, n_crit):
+    """Construct a hierarchical octree to store the particles and return the tree (list) of cells.
+    
+    Arguments:
+      particles: the list of particles
+      root: the root cell
+      n_crit: maximum number of leaves in a single cell
+    
+    Returns:
+      cells: the list of cells
+    
+    """
+    # set root cell
+    cells = [root]       # initialize the cells list
+    # build tree
+    n = len(particles)
+    for i in range(n):
+        # traverse from the root down to a leaf cell
+        curr = 0
+        while cells[curr].nleaf >= n_crit:
+            cells[curr].nleaf += 1
+            octant = (particles[i].x > cells[curr].x) + ((particles[i].y > cells[curr].y) << 1) \
+                   + ((particles[i].z > cells[curr].z) << 2)
+            # if there is no child cell in the particles octant, then create one
+            if not cells[curr].nchild & (1 << octant):
+                add_child(octant, curr, cells, n_crit)
+            curr = cells[curr].child[octant]
+        # allocate the particle in the leaf cell
+        cells[curr].leaf[cells[curr].nleaf] = i
+        cells[curr].nleaf += 1
+        # check whether to split or not
+        if cells[curr].nleaf >= n_crit:
+            split_cell(particles, curr, cells, n_crit)
+    
+    return cells
 
 
 def direct_sum(sources, targets):
