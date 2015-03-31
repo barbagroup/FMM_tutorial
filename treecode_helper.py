@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import numpy
 from matplotlib import pyplot, rcParams
 from mpl_toolkits.mplot3d import Axes3D
@@ -45,17 +46,17 @@ class Cell():
     """The class for a cell.
     
     Arguments:
-      n_crit: maximum number of particles in a leaf cell
+        n_crit: maximum number of particles in a leaf cell
     
     Attributes:
-      nleaf (int): number of leaves in the cell
-      leaf (array of int): array of leaf index
-      nchild (int):  an integer whose last 8 bits is used to keep track of the empty child cells
-      child (array of int): array of child index
-      parent (int): index of parent cell
-      x, y, z (float): coordinates of the cell's center
-      r (float): radius of the cell (half of the side length for cubic cell)
-      multipole (array of float): multipole array of the cell
+        nleaf (int): number of leaves in the cell
+        leaf (array of int): array of leaf index
+        nchild (int):  an integer whose last 8 bits is used to keep track of the empty child cells
+        child (array of int): array of child index
+        parent (int): index of parent cell
+        x, y, z (float): coordinates of the cell's center
+        r (float): radius of the cell (half of the side length for cubic cell)
+        multipole (array of float): multipole array of the cell
       
     """
     def __init__(self, n_crit):
@@ -73,10 +74,10 @@ def add_child(octant, p, cells, n_crit):
     """Add a cell to the end of cells list as a child of p, initialize the center and radius of the child cell c, and establish mutual reference between child c and parent p.
     
     Arguments:
-      octant: reference to one of the eight divisions in three dimensions
-      p: parent cell index in cells list
-      cells: the list of cells
-      n_crit: maximum number of leaves in a single cell
+        octant: reference to one of the eight divisions in three dimensions
+        p: parent cell index in cells list
+        cells: the list of cells
+        n_crit: maximum number of leaves in a single cell
  
     """
     # create a new cell instance
@@ -98,10 +99,10 @@ def split_cell(particles, p, cells, n_crit):
     """Loop in parent p's leafs and reallocate the particles to subcells. If a subcell has not been created in that octant, create one using add_child. If the subcell c's leaf number exceeds n_crit, split the subcell c recursively.
     
     Arguments: 
-      particles: the list of particles
-      p: parent cell index in cells list
-      cells: the list of cells
-      n_crit: maximum number of leaves in a single cell
+        particles: the list of particles
+        p: parent cell index in cells list
+        cells: the list of cells
+        n_crit: maximum number of leaves in a single cell
     
     """
     # loop in the particles stored in the parent cell that you want to split
@@ -124,12 +125,12 @@ def build_tree(particles, root, n_crit):
     """Construct a hierarchical octree to store the particles and return the tree (list) of cells.
     
     Arguments:
-      particles: the list of particles
-      root: the root cell
-      n_crit: maximum number of leaves in a single cell
+        particles: the list of particles
+        root: the root cell
+        n_crit: maximum number of leaves in a single cell
     
     Returns:
-      cells: the list of cells
+        cells: the list of cells
     
     """
     # set root cell
@@ -157,17 +158,88 @@ def build_tree(particles, root, n_crit):
     return cells
 
 
-def direct_sum(sources, targets):
-    """Calculate the gravitational potential (target.phi) at each target 
-    particle using direct summation method.
+def get_multipole(particles, p, cells, leaves, n_crit):
+    """Calculate multipole arrays for all leaf cells under cell p. If leaf number of cell p is equal or bigger than n_crit (non-leaf), traverse down recursively. Otherwise (leaf), calculate the multipole arrays for leaf cell p.
+    
+    Arguments:
+        p: current cell's index
+        cells: the list of cells
+        leaves: the array of all leaf cells
+        n_crit: maximum number of leaves in a single cell
+      
+    """
+    if cells[p].nleaf >= n_crit:
+        for c in range(8):
+            if cells[p].nchild & (1 << c):
+                get_multipole(particles, cells[p].child[c], cells, leaves, n_crit)
+    else:
+        # loop in leaf particles
+        for i in range(cells[p].nleaf):
+            l = cells[p].leaf[i]
+            dx, dy, dz = cells[p].x-particles[l].x, cells[p].y-particles[l].y, cells[p].z-particles[l].z
+            # monopole: 1 term
+            cells[p].multipole[0] += particles[l].m
+            # dipole: 3 terms
+            cells[p].multipole[1:4] += particles[l].m * numpy.array((dx, dy, dz))
+            # quadruple: 6 terms
+            cells[p].multipole[4:] += particles[l].m/2 * numpy.array((dx**2, dy**2, dz**2,\
+                                                            dx*dy, dy*dz, dz*dx))
+        leaves.append(p)
+
+
+def M2M(p, c, cells):
+    """Calculate parent cell p's multipole array based on child cell c's multipoles
+    
+    Arguments:
+        p: parent cell index in cells list
+        c: child cell index in cells list
+        cells: the list of cells
+    """
+    dx, dy, dz = cells[p].x-cells[c].x, cells[p].y-cells[c].y, cells[p].z-cells[c].z
+    # monopole: 1 term
+    cells[p].multipole[0] += cells[c].multipole[0]
+    # dipole：3 terms
+    cells[p].multipole[1:4] += cells[c].multipole[1:4] + cells[c].multipole[0]*numpy.array((dx, dy, dz))
+    # quadruple: 6 terms
+    cells[p].multipole[4] += cells[c].multipole[4] + dx * cells[c].multipole[1] \
+                                                   + dx * dx * cells[c].multipole[0] / 2
+    cells[p].multipole[5] += cells[c].multipole[5] + dy * cells[c].multipole[2] \
+                                                   + dy * dy * cells[c].multipole[0] / 2
+    cells[p].multipole[6] += cells[c].multipole[6] + dz * cells[c].multipole[3] \
+                                                   + dz * dz * cells[c].multipole[0] / 2
+    cells[p].multipole[7] += cells[c].multipole[7] + (dx * cells[c].multipole[2] \
+                                                   +  dy * cells[c].multipole[1] \
+                                                   +  dx * dy * cells[c].multipole[0]) / 2
+    cells[p].multipole[8] += cells[c].multipole[8] + (dy * cells[c].multipole[3] \
+                                                   +  dz * cells[c].multipole[2] \
+                                                   +  dy * dz * cells[c].multipole[0]) / 2
+    cells[p].multipole[9] += cells[c].multipole[9] + (dz * cells[c].multipole[1] \
+                                                   +  dx * cells[c].multipole[3] \
+                                                   +  dz * dx * cells[c].multipole[0]) / 2
+
+
+def upward_sweep(cells):
+    """Traverse from leaves to root, in order to calculate multipoles of all the cells.
+    
+    Arguments:
+        cells: the list of cells
+    
+    """
+    for c in range(len(cells)-1, 0, -1):
+        p = cells[c].parent
+        M2M(p, c, cells)
+
+
+def direct_sum(particles):
+    """Calculate the gravitational potential at each particle
+    using direct summation method.
 
     Arguments:
-        sources: the list of source objects in 'Particle' class
-        targets: the list of target objects in 'Particle' class
+        particles: the list of particles
 
     """
-    for target in targets:
-        for source in sources:
+    for i, target in enumerate(particles):
+        for source in (particles[:i] + particles[i+1:]):
             r = target.distance(source)
             target.phi += source.m/r
 
