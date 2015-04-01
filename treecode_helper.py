@@ -297,21 +297,21 @@ def eval_potential(targets, multipole, center):
     return phi
 
 
-def l2_err(phi_direct, phi_multi):
+def l2_err(phi_direct, phi_tree):
     """Print out the relative err in l2 norm.
     
     """
-    err = numpy.sqrt(sum((phi_direct-phi_multi)**2)/sum(phi_direct**2))
+    err = numpy.sqrt(sum((phi_direct-phi_tree)**2)/sum(phi_direct**2))
     print 'L2 Norm error: {}'.format(err)
 
 
-def plot_err(phi_direct, phi_multi): 
+def plot_err(phi_direct, phi_tree): 
     """Plot the relative error band. 
     
     """
     # plotting the relative error band
     n = len(phi_direct)
-    err_rel = abs((phi_multi - phi_direct) / phi_direct)
+    err_rel = abs((phi_tree - phi_direct) / phi_direct)
     pyplot.figure(figsize=(10,4))
     ax = pyplot.gca()
     pyplot.plot(range(n), err_rel, 'bo', alpha=0.5)
@@ -321,3 +321,50 @@ def plot_err(phi_direct, phi_multi):
     pyplot.xlabel('target particle index')
     pyplot.ylabel(r'$e_{\phi rel}$')
     ax.set_yscale('log')
+
+
+def plot_dist(particles):
+    # plot spatial particle distribution
+    fig = pyplot.figure(figsize=(10,4.5))
+    # left plot
+    ax = fig.add_subplot(1,2,1, projection='3d')
+    ax.scatter([particle.x for particle in particles], 
+               [particle.y for particle in particles], 
+               [particle.z for particle in particles], s=30, c='b')
+    ax.set_xlim3d(0,1)
+    ax.set_ylim3d(0,1)
+    ax.set_zlim3d(0,1)
+    ax.set_xlabel(r'$x$')
+    ax.set_ylabel(r'$y$')
+    ax.set_zlabel(r'$z$')
+    ax.set_title('Particle Distribution')
+    # right plot
+    ax = fig.add_subplot(1,2,2, projection='3d')
+    scale = 50   # scale for dot size in scatter plot
+    ax.scatter([particle.x for particle in particles], 
+               [particle.y for particle in particles], 
+               [particle.z for particle in particles],
+               s=numpy.array([particle.phi for particle in particles])*scale, c='b')
+    ax.set_xlim3d(0,1)
+    ax.set_ylim3d(0,1)
+    ax.set_zlim3d(0,1)
+    ax.set_xlabel(r'$x$')
+    ax.set_ylabel(r'$y$')
+    ax.set_zlabel(r'$z$')
+    ax.set_title('Particle Distribution (radius implies potential)');
+
+
+def read_particle(filename):
+    """Read the particle information from the file, and return the list of particles.
+
+    """
+    file = open('test/' + filename, 'r')
+    particles = []
+    for line in file:
+        line = [float(x) for x in line.split()]
+        coords, m = line[1:4], line[-1]
+        particle = Particle(coords=coords, m=m)
+        particles.append(particle)
+    file.close()
+    
+    return particles
