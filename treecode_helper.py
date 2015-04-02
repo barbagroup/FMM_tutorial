@@ -69,6 +69,9 @@ class Cell():
         self.r = 0.           # radius of the cell
         self.multipole = numpy.zeros(10, dtype=numpy.float)  # multipole array
 
+    def distance(self, other):
+        return numpy.sqrt((self.x-other.x)**2 + (self.y-other.y)**2 + (self.z-other.z)**2)
+
 
 def add_child(octant, p, cells, n_crit):
     """Add a cell to the end of cells list as a child of p, initialize the center and radius of the child cell c, and establish mutual reference between child c and parent p.
@@ -259,9 +262,9 @@ def distance(array, point):
     return numpy.sqrt((array[0]-point.x)**2 + (array[1]-point.y)**2
                                             + (array[2]-point.z)**2)
 
-
+"""
 def eval_potential(targets, multipole, center):
-    """Given targets list, multipole and expansion center, return
+    Given targets list, multipole and expansion center, return
     the array of target's potentials.
     
     Arguments:
@@ -272,7 +275,7 @@ def eval_potential(targets, multipole, center):
     Returns:
         phi: the potential array of targets
         
-    """
+    
     # prepare for array operation
     target_x = numpy.array([target.x for target in targets])
     target_y = numpy.array([target.y for target in targets])
@@ -295,7 +298,7 @@ def eval_potential(targets, multipole, center):
     # evaluate potential
     phi = numpy.dot(multipole, weight)
     return phi
-
+"""
 
 def l2_err(phi_direct, phi_tree):
     """Print out the relative err in l2 norm.
@@ -368,3 +371,12 @@ def read_particle(filename):
     file.close()
     
     return particles
+
+def write_result(phi, filename):
+    """Write the potential values into a result file.
+
+    """
+    file = open('test/' + filename, 'w')
+    for i in phi:
+        file.write(str(i) + '\n')
+    file.close()
