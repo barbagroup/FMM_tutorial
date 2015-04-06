@@ -8,7 +8,7 @@ coords = numpy.linspace(start, end, p)
 
 m = 1./(p**3)
 
-file = open('uniform'+str(p**3), 'w')
+file = open('cube'+str(p**3), 'w')
 idx = 0
 for x in coords:
 	for y in coords:
