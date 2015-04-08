@@ -1,19 +1,12 @@
-import numpy
+from numpy import random
 
-p = 10
+n = 10000
 
-start = 1./(p+1)
-end = 1 - start
-coords = numpy.linspace(start, end, p)
+coords = random.rand(n,3)
+m = 1./n
 
-m = 1./(p**3)
-
-file = open('cube'+str(p**3), 'w')
-idx = 0
-for x in coords:
-	for y in coords:
-		for z in coords:
-			file.write(str(idx) + ' ' + str(x) + ' ' + str(y) + ' ' + str(z) + ' ' + str(m) + '\n')
-			idx += 1
-			
-file.close()
+fid = open('cube'+str(n),'w')
+for idx in range(n):
+    fid.write(str(idx) + str(coords[idx,:])[1:-1] + ' ' + str(m) + '\n')
+    
+fid.close()
