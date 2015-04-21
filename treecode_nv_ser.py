@@ -38,10 +38,10 @@ toc = time.time()
 t_eval = toc -tic
 
 # print info
-print filename + '-serial' + '-non-vectorized'
-print "N = %i" % len(particles)
-print "n_crit = %i" % n_crit
-print "theta = %.2f" % theta
+print(filename + '-serial' + '-non-vectorized')
+print("N = %i" % len(particles))
+print("n_crit = %i" % n_crit)
+print("theta = %.2f" % theta)
 
 # calculate the error
 phi_direct = numpy.loadtxt('test/'+filename+'_result')
@@ -50,8 +50,11 @@ l2_err(phi_direct, phi_tree)
 
 # print benchmark
 t_tree = t_src + t_P2M + t_M2M + t_eval
-print "time elapsed: %f s" % t_tree
-print "build tree: %f, %.2f %%" % (t_src, t_src/t_tree)
-print "P2M       : %f, %.2f %%" % (t_P2M, t_P2M/t_tree)
-print "M2M       : %f, %.2f %%" % (t_M2M, t_M2M/t_tree)
-print "eval phi  : %f. %.2f %%" % (t_eval, t_eval/t_tree)
+print("time elapsed: %f s" % t_tree)
+print("build tree: %f, %.2f %%" % (t_src, t_src/t_tree))
+print("P2M       : %f, %.2f %%" % (t_P2M, t_P2M/t_tree))
+print("M2M       : %f, %.2f %%" % (t_M2M, t_M2M/t_tree))
+print("eval phi  : %f. %.2f %%" % (t_eval, t_eval/t_tree))
+
+# calculate the speedup
+print("speedup: %.2f" % speedup(t_tree, filename))
