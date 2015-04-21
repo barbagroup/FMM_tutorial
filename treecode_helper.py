@@ -262,43 +262,111 @@ def distance(array, point):
     return numpy.sqrt((array[0]-point.x)**2 + (array[1]-point.y)**2
                                             + (array[2]-point.z)**2)
 
-"""
-def eval_potential(targets, multipole, center):
-    Given targets list, multipole and expansion center, return
-    the array of target's potentials.
+
+
+def eval_helper_nv(particles, p, i, cells, n_crit, theta):
+    """Evaluate the gravitational potential at target point i, caused by source particles cell p. If leaf number of cell p is less than n_crit (twig), use direct summation. Otherwise (non-twig), loop in p's child cells. If child cell c is in far-field of target particle i, use multipole expansion. Otherwise (near-field), call the function recursively.
     
     Arguments:
-        targets: the list of target objects in 'Particle' class
-        multipole: the multipole array of the cell
-        center: the point object of expansion center
+        particles: the list of particles
+        p: cell index in cells list
+        i: target particle index
+        cells: the list of cells
+        n_crit: maximum number of leaves in a single cell
+        theta: tolerance parameter    
+    """
+    # non-leaf cell
+    if cells[p].nleaf >= n_crit:
+        # loop in p's child cells (8 octants)
+        for octant in range(8):
+            if cells[p].nchild & (1 << octant):
+                c = cells[p].child[octant]
+                r = particles[i].distance(cells[c])
+                # near-field child cell
+                if cells[c].r > theta*r:
+                    eval_helper_nv(particles, c, i, cells, n_crit, theta)
+                # far-field child cell
+                else:
+                    dx = particles[i].x - cells[c].x
+                    dy = particles[i].y - cells[c].y
+                    dz = particles[i].z - cells[c].z
+                    r3 = r**3
+                    r5 = r3*r**2
+                    # calculate the weight for each multipole
+                    weight = [1/r, -dx/r3, -dy/r3, -dz/r3, 3*dx**2/r5 - 1/r3, \
+                              3*dy**2/r5 - 1/r3, 3*dz**2/r5 - 1/r3, 3*dx*dy/r5, \
+                              3*dy*dz/r5, 3*dz*dx/r5]
+                    particles[i].phi += numpy.dot(cells[c].multipole, weight)
+                
+    # leaf cell
+    else:
+        # loop in twig cell's particles
+        for l in range(cells[p].nleaf):
+            source = particles[cells[p].leaf[l]]
+            r = particles[i].distance(source)
+            if r != 0:
+                particles[i].phi += source.m / r
+
+
+def eval_potential_nv(particles, cells, n_crit, theta):
+    for i in range(len(particles)):
+        eval_helper_nv(particles, 0, i, cells, n_crit, theta)
+
+
+def eval_helper_v(particles, p, t, cells, n_crit, theta):
+    """Evaluate the gravitational potential at target point i, caused by source particles cell p. If leaf number of cell p is less than n_crit (twig), use direct summation. Otherwise (non-twig), loop in p's child cells. If child cell c is in far-field of target particle i, use multipole expansion. Otherwise (near-field), call the function recursively.
     
-    Returns:
-        phi: the potential array of targets
-        
+    Arguments:
+        particles: the list of particles
+        p: cell index in cells list
+        t: leaf cell's index in cells list
+        cells:   the list of cells
+        n_crit:  maximum number of leaves in a single cell
+        theta:   tolerance parameter
     
-    # prepare for array operation
-    target_x = numpy.array([target.x for target in targets])
-    target_y = numpy.array([target.y for target in targets])
-    target_z = numpy.array([target.z for target in targets])
-    target_array = [target_x, target_y, target_z]
-    
-    # calculate the distance between each target and center
-    r = distance(target_array, center)
-    
-    # prearrange some constants for weight
-    dx, dy, dz = target_x-center.x, target_y-center.y, target_z-center.z
-    r3 = r**3
-    r5 = r3*r**2
-    
-    # calculate the weight for each multipole
-    weight = [1/r, -dx/r3, -dy/r3, -dz/r3, 3*dx**2/r5 - 1/r3, \
-              3*dy**2/r5 - 1/r3, 3*dz**2/r5 - 1/r3, 3*dx*dy/r5, \
-              3*dy*dz/r5, 3*dz*dx/r5]
-    
-    # evaluate potential
-    phi = numpy.dot(multipole, weight)
-    return phi
-"""
+    """
+    # non-twig cell
+    if cells[p].nleaf >= n_crit:
+        # loop in p's child cells (8 octants)
+        for octant in range(8):
+            if cells[p].nchild & (1 << octant):
+                c = cells[p].child[octant]
+                r = cells[t].distance(cells[c])
+                # near-field child cell
+                if (cells[c].r+cells[t].r) > theta*r:
+                    eval_helper_v(particles, c, t, cells, n_crit, theta)
+                # far-field child cell
+                else:
+                    for i in range(cells[t].nleaf):
+                        l = cells[t].leaf[i]
+                        dx = particles[l].x - cells[c].x
+                        dy = particles[l].y - cells[c].y
+                        dz = particles[l].z - cells[c].z
+                        r = particles[l].distance(cells[c])
+                        r3 = r**3
+                        r5 = r3*r**2
+                        # calculate the weight for each multipole
+                        weight = [1/r, -dx/r3, -dy/r3, -dz/r3, 3*dx**2/r5 - 1/r3, \
+                                  3*dy**2/r5 - 1/r3, 3*dz**2/r5 - 1/r3, 3*dx*dy/r5, \
+                                  3*dy*dz/r5, 3*dz*dx/r5]
+                        particles[l].phi += numpy.dot(cells[c].multipole, weight)
+    #twig cell
+    else:
+        for i in range(cells[t].nleaf):
+            l = cells[t].leaf[i]
+            for j in range(cells[p].nleaf):
+                source = particles[cells[p].leaf[j]]
+                r = particles[l].distance(source)
+                if r != 0:
+                    particles[l].phi += source.m / r
+
+
+
+def eval_potential_v(particles, cells, leaves, n_crit, theta):
+    for t in leaves:
+        eval_helper_v(particles, 0, t, cells, n_crit, theta)
+
+
 
 def l2_err(phi_direct, phi_tree):
     """Print out the relative err in l2 norm.
@@ -380,3 +448,42 @@ def write_result(phi, filename):
     for i in phi:
         file.write(str(i) + '\n')
     file.close()
+
+
+"""
+def eval_potential(targets, multipole, center):
+    Given targets list, multipole and expansion center, return
+    the array of target's potentials.
+    
+    Arguments:
+        targets: the list of target objects in 'Particle' class
+        multipole: the multipole array of the cell
+        center: the point object of expansion center
+    
+    Returns:
+        phi: the potential array of targets
+        
+    
+    # prepare for array operation
+    target_x = numpy.array([target.x for target in targets])
+    target_y = numpy.array([target.y for target in targets])
+    target_z = numpy.array([target.z for target in targets])
+    target_array = [target_x, target_y, target_z]
+    
+    # calculate the distance between each target and center
+    r = distance(target_array, center)
+    
+    # prearrange some constants for weight
+    dx, dy, dz = target_x-center.x, target_y-center.y, target_z-center.z
+    r3 = r**3
+    r5 = r3*r**2
+    
+    # calculate the weight for each multipole
+    weight = [1/r, -dx/r3, -dy/r3, -dz/r3, 3*dx**2/r5 - 1/r3, \
+              3*dy**2/r5 - 1/r3, 3*dz**2/r5 - 1/r3, 3*dx*dy/r5, \
+              3*dy*dz/r5, 3*dz*dx/r5]
+    
+    # evaluate potential
+    phi = numpy.dot(multipole, weight)
+    return phi
+"""
