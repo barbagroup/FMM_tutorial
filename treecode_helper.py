@@ -450,6 +450,14 @@ def write_result(phi, filename):
     file.close()
 
 
+def speedup(t_tree, filename):
+    """Given the time elapsed in treecode and the test file name, return the speedup."""
+    time = {'cube100': 0.02318060398, 'cube1000': 2.0633965730, \
+            'cube10000': 0, 'ellipsoid100': 0.02169663906, \
+            'ellipsoid1000': 2.1566750526, 'ellipsoid10000': 0}
+    t_direct = time[filename]
+    return t_direct/t_tree
+
 """
 def eval_potential(targets, multipole, center):
     Given targets list, multipole and expansion center, return
