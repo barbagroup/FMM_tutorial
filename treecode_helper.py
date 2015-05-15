@@ -2,7 +2,10 @@
 import numpy
 from matplotlib import pyplot, rcParams
 from mpl_toolkits.mplot3d import Axes3D
+from numba import autojit
 
+
+#----- class Point definition-----#
 class Point():
     """The class for a point.
     
@@ -262,7 +265,7 @@ def distance(array, point):
     return numpy.sqrt((array[0]-point.x)**2 + (array[1]-point.y)**2
                                             + (array[2]-point.z)**2)
 
-
+#----------potential evaluation: particle-particle-----#
 
 def eval_helper_nv(particles, p, i, cells, n_crit, theta):
     """Evaluate the gravitational potential at target point i, caused by source particles cell p. If leaf number of cell p is less than n_crit (twig), use direct summation. Otherwise (non-twig), loop in p's child cells. If child cell c is in far-field of target particle i, use multipole expansion. Otherwise (near-field), call the function recursively.
@@ -312,6 +315,8 @@ def eval_potential_nv(particles, cells, n_crit, theta):
     for i in range(len(particles)):
         eval_helper_nv(particles, 0, i, cells, n_crit, theta)
 
+
+#-----potential evaluation: particle-leave cells-----
 
 def eval_helper_v(particles, p, t, cells, n_crit, theta):
     """Evaluate the gravitational potential at target point i, caused by source particles cell p. If leaf number of cell p is less than n_crit (twig), use direct summation. Otherwise (non-twig), loop in p's child cells. If child cell c is in far-field of target particle i, use multipole expansion. Otherwise (near-field), call the function recursively.
@@ -366,6 +371,45 @@ def eval_potential_v(particles, cells, leaves, n_crit, theta):
     for t in leaves:
         eval_helper_v(particles, 0, t, cells, n_crit, theta)
 
+
+#-----potential evalution: particle-particle for jited direct summation
+def eval_helper_jit(particles, p, i, cells, n_crit, theta, direct_sum_list):
+    """Evaluate the gravitational potential at each target point"""
+    # non-leaf cell
+    if cells[p].nleaf >= n_crit:
+        # loop in p's child cells (8 octants)
+        for octant in range(8):
+            if cells[p].nchild & (1 << octant):
+                c = cells[p].child[octant]
+                r = particles[i].distance(cells[c])
+                # near-field child cell
+                if cells[c].r > theta*r:
+                    eval_helper_jit(particles, c, i, cells, n_crit, theta, direct_sum_list)
+                # far-field child cell
+                else:
+                    dx = particles[i].x - cells[c].x
+                    dy = particles[i].y - cells[c].y
+                    dz = particles[i].z - cells[c].z
+                    r3 = r*r*r
+                    r5 = r3*r*r
+                    # calculate the weight for each multipole
+                    weight = [1/r, -dx/r3, -dy/r3, -dz/r3, 3*dx**2/r5 - 1/r3, \
+                              3*dy**2/r5 - 1/r3, 3*dz**2/r5 - 1/r3, 3*dx*dy/r5, \
+                              3*dy*dz/r5, 3*dz*dx/r5]
+                    particles[i].phi += numpy.dot(cells[c].multipole, weight)
+                
+    # leaf cell
+    # direct summation -> write the index in a list (targetidx, sourceidx)
+    """else:
+        # loop in twig cell's particles
+        for l in range(cells[p].nleaf):
+            if i != cells[p].leaf[l]:
+                direct_sum_list.append((i, cells[p].leaf[l]))"""
+
+
+def eval_potential_jit(particles, cells, n_crit, theta, direct_sum_list):
+    for i in range(len(particles)):
+        eval_helper_jit(particles, 0, i, cells, n_crit, theta, direct_sum_list)
 
 
 def l2_err(phi_direct, phi_tree):

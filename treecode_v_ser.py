@@ -1,13 +1,17 @@
 # -*- coding: utf-8 -*-
+# treecode: vectorized, serial
+import sys
 import numpy
 import time
 from treecode_helper import *
 
-filename = 'cube1000'
+assert (len(sys.argv) == 4), "The format should be \n [script.py] [filename] [n_crit] [theta]"
+
+filename = sys.argv[1]
 particles = read_particle(filename)
 
-n_crit = 10
-theta = 0.2
+n_crit = int(sys.argv[2])
+theta = float(sys.argv[3])
 
 # build tree
 tic = time.time()
@@ -38,7 +42,8 @@ toc = time.time()
 t_eval = toc -tic
 
 # print info
-print filename + '-serial' + '-vectorized'
+print filename + '-serial' + '-vectorized-treecode'
+print(len(filename + '-serial' + '-vectorized-treecode')*'-')
 print "N = %i" % len(particles)
 print "n_crit = %i" % n_crit
 print "theta = %.2f" % theta
@@ -50,8 +55,12 @@ l2_err(phi_direct, phi_tree)
 
 # print benchmark
 t_tree = t_src + t_P2M + t_M2M + t_eval
+print(28*'-')
 print "time elapsed: %f s" % t_tree
 print "build tree: %f, %.2f %%" % (t_src, t_src/t_tree)
 print "P2M       : %f, %.2f %%" % (t_P2M, t_P2M/t_tree)
 print "M2M       : %f, %.2f %%" % (t_M2M, t_M2M/t_tree)
 print "eval phi  : %f. %.2f %%" % (t_eval, t_eval/t_tree)
+
+# calculate the speedup
+# print("speedup: %.2f" % speedup(t_tree, filename))
