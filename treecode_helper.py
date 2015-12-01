@@ -417,7 +417,7 @@ def l2_err(phi_direct, phi_tree):
     
     """
     err = numpy.sqrt(sum((phi_direct-phi_tree)**2)/sum(phi_direct**2))
-    print 'L2 Norm error: {}'.format(err)
+    print('L2 Norm error: {}'.format(err))
 
 
 def plot_err(phi_direct, phi_tree): 
