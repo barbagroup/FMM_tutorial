@@ -46,7 +46,7 @@ div.cell.code_cell {
 div.text_cell_render{
     font-family: 'Alegreya Sans' sans-serif;
     line-height: 140%;
-    font-size: 125%;
+    font-size: 110%;
     font-weight: 400;
     width:600px;
     margin-left:auto;
