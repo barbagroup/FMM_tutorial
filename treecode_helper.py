@@ -174,22 +174,23 @@ def get_multipole(particles, p, cells, leaves, n_crit):
         n_crit: maximum number of leaves in a single cell
       
     """
+    # if the current cell p is not a leaf cell, then recursively traverse down
     if cells[p].nleaf >= n_crit:
         for c in range(8):
             if cells[p].nchild & (1 << c):
                 get_multipole(particles, cells[p].child[c], cells, leaves, n_crit)
+    # otherwise cell p is a leaf cell
     else:
-        # loop in leaf particles
+        # loop in leaf particles, do P2M
         for i in range(cells[p].nleaf):
             l = cells[p].leaf[i]
-            dx, dy, dz = cells[p].x-particles[l].x, cells[p].y-particles[l].y, cells[p].z-particles[l].z
-            # monopole: 1 term
-            cells[p].multipole[0] += particles[l].m
-            # dipole: 3 terms
-            cells[p].multipole[1:4] += particles[l].m * numpy.array((dx, dy, dz))
-            # quadruple: 6 terms
-            cells[p].multipole[4:] += particles[l].m/2 * numpy.array((dx**2, dy**2, dz**2,\
-                                                            dx*dy, dy*dz, dz*dx))
+            dx, dy, dz = cells[p].x-particles[l].x, \
+                         cells[p].y-particles[l].y, \
+                         cells[p].z-particles[l].z
+            cells[p].multipole += particles[l].m * \
+                                  numpy.array((1, dx, dy, dz,\
+                                               dx**2/2, dy**2/2, dz**2/2,\
+                                               dx*dy/2, dy*dz/2, dz*dx/2)) 
         leaves.append(p)
 
 
