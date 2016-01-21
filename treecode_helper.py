@@ -195,7 +195,8 @@ def get_multipole(particles, p, cells, leaves, n_crit):
 
 
 def M2M(p, c, cells):
-    """Calculate parent cell p's multipole array based on child cell c's multipoles
+    """Calculate parent cell p's multipole array based on child cell c's 
+    multipoles
     
     Arguments:
         p: parent cell index in cells list
@@ -203,27 +204,20 @@ def M2M(p, c, cells):
         cells: the list of cells
     """
     dx, dy, dz = cells[p].x-cells[c].x, cells[p].y-cells[c].y, cells[p].z-cells[c].z
-    # monopole: 1 term
-    cells[p].multipole[0] += cells[c].multipole[0]
-    # dipole：3 terms
-    cells[p].multipole[1:4] += cells[c].multipole[1:4] + cells[c].multipole[0]*numpy.array((dx, dy, dz))
-    # quadruple: 6 terms
-    cells[p].multipole[4] += cells[c].multipole[4] + dx * cells[c].multipole[1] \
-                                                   + dx * dx * cells[c].multipole[0] / 2
-    cells[p].multipole[5] += cells[c].multipole[5] + dy * cells[c].multipole[2] \
-                                                   + dy * dy * cells[c].multipole[0] / 2
-    cells[p].multipole[6] += cells[c].multipole[6] + dz * cells[c].multipole[3] \
-                                                   + dz * dz * cells[c].multipole[0] / 2
-    cells[p].multipole[7] += cells[c].multipole[7] + (dx * cells[c].multipole[2] \
-                                                   +  dy * cells[c].multipole[1] \
-                                                   +  dx * dy * cells[c].multipole[0]) / 2
-    cells[p].multipole[8] += cells[c].multipole[8] + (dy * cells[c].multipole[3] \
-                                                   +  dz * cells[c].multipole[2] \
-                                                   +  dy * dz * cells[c].multipole[0]) / 2
-    cells[p].multipole[9] += cells[c].multipole[9] + (dz * cells[c].multipole[1] \
-                                                   +  dx * cells[c].multipole[3] \
-                                                   +  dz * dx * cells[c].multipole[0]) / 2
-
+    
+    Dxyz =  numpy.array((dx, dy, dz))
+    Dyzx = numpy.roll(Dxyz,-1) #It permutes the array (dx,dy,dz) to (dy,dz,dx) 
+    
+    cells[p].multipole += cells[c].multipole
+    
+    cells[p].multipole[1:4] += cells[c].multipole[0] * Dxyz
+    
+    cells[p].multipole[4:7] += cells[c].multipole[1:4] * Dxyz\
+                            + 0.5*cells[c].multipole[0] *  Dxyz**2
+    
+    cells[p].multipole[7:] += 0.5*numpy.roll(cells[c].multipole[1:4], -1) *  Dxyz \
+                            + 0.5*cells[c].multipole[1:4] * Dxyz \
+                            + 0.5*cells[c].multipole[0] * Dxyz * Dyzx   
 
 def upward_sweep(cells):
     """Traverse from leaves to root, in order to calculate multipoles of all the cells.
