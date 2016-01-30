@@ -54,7 +54,8 @@ class Cell():
     Attributes:
         nleaf (int): number of leaves in the cell
         leaf (array of int): array of leaf index
-        nchild (int):  an integer whose last 8 bits is used to keep track of the empty child cells
+        nchild (int):  an integer whose last 8 bits is used to keep track 
+        of the empty child cells
         child (array of int): array of child index
         parent (int): index of parent cell
         x, y, z (float): coordinates of the cell's center
@@ -77,13 +78,15 @@ class Cell():
 
 
 def add_child(octant, p, cells, n_crit):
-    """Add a cell to the end of cells list as a child of p, initialize the center and radius of the child cell c, and establish mutual reference between child c and parent p.
+    """Add a cell to the end of cells list as a child of p, initialize the
+    center and radius of the child cell c, and establish mutual reference
+    between child c and parent p.
     
     Arguments:
         octant: reference to one of the eight divisions in three dimensions
         p: parent cell index in cells list
         cells: the list of cells
-        n_crit: maximum number of leaves in a single cell
+        n_crit: maximum number of particles in a single cell
  
     """
     # create a new cell instance
@@ -102,13 +105,15 @@ def add_child(octant, p, cells, n_crit):
 
 
 def split_cell(particles, p, cells, n_crit):
-    """Loop in parent p's leafs and reallocate the particles to subcells. If a subcell has not been created in that octant, create one using add_child. If the subcell c's leaf number exceeds n_crit, split the subcell c recursively.
+    """Loop in parent p's leafs and reallocate the particles to subcells. 
+    If a subcell has not been created in that octant, create one using add_child. 
+    If the subcell c's leaf number exceeds n_crit, split the subcell c recursively.
     
     Arguments: 
         particles: the list of particles
         p: parent cell index in cells list
         cells: the list of cells
-        n_crit: maximum number of leaves in a single cell
+        n_crit: maximum number of particles in a single cell
     
     """
     # loop in the particles stored in the parent cell that you want to split
@@ -128,12 +133,13 @@ def split_cell(particles, p, cells, n_crit):
 
 
 def build_tree(particles, root, n_crit):
-    """Construct a hierarchical octree to store the particles and return the tree (list) of cells.
+    """Construct a hierarchical octree to store the particles and return 
+    the tree (list) of cells.
     
     Arguments:
         particles: the list of particles
         root: the root cell
-        n_crit: maximum number of leaves in a single cell
+        n_crit: maximum number of particles in a single cell
     
     Returns:
         cells: the list of cells
@@ -165,7 +171,9 @@ def build_tree(particles, root, n_crit):
 
 
 def get_multipole(particles, p, cells, leaves, n_crit):
-    """Calculate multipole arrays for all leaf cells under cell p. If leaf number of cell p is equal or bigger than n_crit (non-leaf), traverse down recursively. Otherwise (leaf), calculate the multipole arrays for leaf cell p.
+    """Calculate multipole arrays for all leaf cells under cell p. If leaf
+    number of cell p is equal or bigger than n_crit (non-leaf), traverse down
+    recursively. Otherwise (leaf), calculate the multipole arrays for leaf cell p.
     
     Arguments:
         p: current cell's index
