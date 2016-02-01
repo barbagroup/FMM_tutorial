@@ -92,7 +92,7 @@ def add_child(octant, p, cells, n_crit):
         octant: reference to one of the eight divisions in three dimensions.
         p: parent cell index in cells list.
         cells: the list of cells.
-        n_crit: maximum number of particles in a single cell.
+        n_crit: maximum number of particles in a leaf cell.
     """
     
     # create a new cell instance
@@ -123,7 +123,7 @@ def split_cell(particles, p, cells, n_crit):
         particles: the list of particles.
         p: parent cell index in cells list.
         cells: the list of cells.
-        n_crit: maximum number of particles in a single cell.
+        n_crit: maximum number of particles in a leaf cell.
     """
     
     # loop in the particles stored in the parent cell that you want to split
@@ -203,7 +203,7 @@ def get_multipole(particles, p, cells, leaves, n_crit):
         p: current cell's index.
         cells: the list of cells.
         leaves: the array of all leaf cells.
-        n_crit: maximum number of leaves in a single cell.     
+        n_crit: maximum number of particles in a leaf cell.     
     """
    
     # if the current cell p is not a leaf cell, then recursively traverse down
@@ -302,21 +302,22 @@ def distance(array, point):
 
 #----------potential evaluation: particle-particle-----#
 
-def eval_helper_nv(particles, p, i, cells, n_crit, theta):
-
-    """Evaluate the gravitational potential at target point i, caused by source   
-       particles cell p. If leaf number of cell p is less than n_crit (twig), use
-       direct summation. Otherwise (non-twig), loop in p's child cells. If child
-       cell c is in far-field of target particle i, use multipole expansion.
-       Otherwise (near-field), call the function recursively.
+def evaluate(particles, p, i, cells, n_crit, theta):
+    
+    """Evaluate the gravitational potential at a target point i, 
+    caused by source particles cell p. If nleaf of cell p is less 
+    than n_crit (leaf), use direct summation. Otherwise (non-leaf), loop
+    in p's child cells. If child cell c is in far-field of target particle i,
+    use multipole expansion. Otherwise (near-field), call the function
+    recursively.
     
     Arguments:
-        particles: the list of particles.
-        p: cell index in cells list.
-        i: target particle index.
-        cells: the list of cells.
-        n_crit: maximum number of leaves in a single cell.
-        theta: tolerance parameter.    
+        particles: the list of particles
+        p: cell index in cells list
+        i: target particle index
+        cells: the list of cells
+        n_crit: maximum number of leaves in a single cell
+        theta: tolerance parameter    
     """
    
     # non-leaf cell
@@ -357,119 +358,21 @@ def eval_helper_nv(particles, p, i, cells, n_crit, theta):
                 particles[i].phi += source.m / r
 
 
-def eval_potential_nv(particles, cells, n_crit, theta):
-    for i in range(len(particles)):
-        eval_helper_nv(particles, 0, i, cells, n_crit, theta)
-
-
-#-----potential evaluation: particle-leave cells-----
-
-def eval_helper_v(particles, p, t, cells, n_crit, theta):
+def eval_potential(particles, cells, n_crit, theta):
     
-    """Evaluate the gravitational potential at target point i, caused by source
-    particles cell p. If leaf number of cell p is less than n_crit (twig), use direct
-    summation. Otherwise (non-twig), loop in p's child cells. If child cell c is in
-    far-field of target particle i, use multipole expansion. Otherwise (near-field),
-    call the function recursively.
+    """Evaluate the gravitational potential at all target points 
     
     Arguments:
+    ----------
         particles: the list of particles.
-        p: cell index in cells list.
-        t: leaf cell's index in cells list.
-        cells:   the list of cells.
-        n_crit:  maximum number of leaves in a single cell.
-        theta:   tolerance parameter.   
+        cells: the list of cells.
+        n_crit: maximum number of particles in a single cell
+        theta: tolerance parameter.    
     """
-    # non-leaf cell
-    if cells[p].nleaf >= n_crit:
-        
-        # loop in p's child cells (8 octants)
-        for octant in range(8):
-            if cells[p].nchild & (1 << octant):
-                c = cells[p].child[octant]
-                r = cells[t].distance(cells[c])
-                
-                # near-field child cell
-                if (cells[c].r+cells[t].r) > theta*r:
-                    eval_helper_v(particles, c, t, cells, n_crit, theta)
-                
-                # far-field child cell
-                else:
-                    for i in range(cells[t].nleaf):
-                        l = cells[t].leaf[i]
-                        dx = particles[l].x - cells[c].x
-                        dy = particles[l].y - cells[c].y
-                        dz = particles[l].z - cells[c].z
-                        r = particles[l].distance(cells[c])
-                        r3 = r**3
-                        r5 = r3*r**2
-                        
-                        # calculate the weight for each multipole
-                        weight = [1/r, -dx/r3, -dy/r3, -dz/r3, 3*dx**2/r5 - 1/r3, \
-                                  3*dy**2/r5 - 1/r3, 3*dz**2/r5 - 1/r3, 3*dx*dy/r5, \
-                                  3*dy*dz/r5, 3*dz*dx/r5]
-                        particles[l].phi += numpy.dot(cells[c].multipole, weight)
-    #leaf cell
-    else:
-        for i in range(cells[t].nleaf):
-            l = cells[t].leaf[i]
-            for j in range(cells[p].nleaf):
-                source = particles[cells[p].leaf[j]]
-                r = particles[l].distance(source)
-                if r != 0:
-                    particles[l].phi += source.m / r
-
-
-
-def eval_potential_v(particles, cells, leaves, n_crit, theta):
-    for t in leaves:
-        eval_helper_v(particles, 0, t, cells, n_crit, theta)
-
-
-#-----potential evalution: particle-particle for jited direct summation
-
-def eval_helper_jit(particles, p, i, cells, n_crit, theta, direct_sum_list):
     
-    """Evaluate the gravitational potential at each target point"""
-    
-    # non-leaf cell
-    if cells[p].nleaf >= n_crit:
-        
-        # loop in p's child cells (8 octants)
-        for octant in range(8):
-            if cells[p].nchild & (1 << octant):
-                c = cells[p].child[octant]
-                r = particles[i].distance(cells[c])
-                # near-field child cell
-                if cells[c].r > theta*r:
-                    eval_helper_jit(particles, c, i, cells, n_crit, theta, direct_sum_list)
-                
-                # far-field child cell
-                else:
-                    dx = particles[i].x - cells[c].x
-                    dy = particles[i].y - cells[c].y
-                    dz = particles[i].z - cells[c].z
-                    r3 = r*r*r
-                    r5 = r3*r*r
-                   
-                    # calculate the weight for each multipole
-                    weight = [1/r, -dx/r3, -dy/r3, -dz/r3, 3*dx**2/r5 - 1/r3, \
-                              3*dy**2/r5 - 1/r3, 3*dz**2/r5 - 1/r3, 3*dx*dy/r5, \
-                              3*dy*dz/r5, 3*dz*dx/r5]
-                    particles[i].phi += numpy.dot(cells[c].multipole, weight)
-                
-    # leaf cell
-    # direct summation -> write the index in a list (targetidx, sourceidx)
-    """else:
-        # loop in twig cell's particles
-        for l in range(cells[p].nleaf):
-            if i != cells[p].leaf[l]:
-                direct_sum_list.append((i, cells[p].leaf[l]))"""
-
-
-def eval_potential_jit(particles, cells, n_crit, theta, direct_sum_list):
     for i in range(len(particles)):
-        eval_helper_jit(particles, 0, i, cells, n_crit, theta, direct_sum_list)
+        evaluate(particles, 0, i, cells, n_crit, theta)
+
 
 
 def l2_err(phi_direct, phi_tree):
@@ -488,6 +391,7 @@ def plot_err(phi_direct, phi_tree):
     # plotting the relative error band
     n = len(phi_direct)
     err_rel = abs((phi_tree - phi_direct) / phi_direct)
+    
     pyplot.figure(figsize=(10,4))
     ax = pyplot.gca()
     pyplot.plot(range(n), err_rel, 'bo', alpha=0.5)
@@ -568,40 +472,3 @@ def speedup(t_tree, filename):
     t_direct = time[filename]
     return t_direct/t_tree
 
-"""
-def eval_potential(targets, multipole, center):
-    Given targets list, multipole and expansion center, return
-    the array of target's potentials.
-    
-    Arguments:
-        targets: the list of target objects in 'Particle' class
-        multipole: the multipole array of the cell
-        center: the point object of expansion center
-    
-    Returns:
-        phi: the potential array of targets
-        
-    
-    # prepare for array operation
-    target_x = numpy.array([target.x for target in targets])
-    target_y = numpy.array([target.y for target in targets])
-    target_z = numpy.array([target.z for target in targets])
-    target_array = [target_x, target_y, target_z]
-    
-    # calculate the distance between each target and center
-    r = distance(target_array, center)
-    
-    # prearrange some constants for weight
-    dx, dy, dz = target_x-center.x, target_y-center.y, target_z-center.z
-    r3 = r**3
-    r5 = r3*r**2
-    
-    # calculate the weight for each multipole
-    weight = [1/r, -dx/r3, -dy/r3, -dz/r3, 3*dx**2/r5 - 1/r3, \
-              3*dy**2/r5 - 1/r3, 3*dz**2/r5 - 1/r3, 3*dx*dy/r5, \
-              3*dy*dz/r5, 3*dz*dx/r5]
-    
-    # evaluate potential
-    phi = numpy.dot(multipole, weight)
-    return phi
-"""
