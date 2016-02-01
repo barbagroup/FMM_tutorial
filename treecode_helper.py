@@ -363,10 +363,9 @@ def eval_potential(particles, cells, n_crit, theta):
     """Evaluate the gravitational potential at all target points 
     
     Arguments:
-    ----------
         particles: the list of particles.
         cells: the list of cells.
-        n_crit: maximum number of particles in a single cell
+        n_crit: maximum number of particles in a single cell.
         theta: tolerance parameter.    
     """
     
@@ -377,7 +376,11 @@ def eval_potential(particles, cells, n_crit, theta):
 
 def l2_err(phi_direct, phi_tree):
     
-    """Print out the relative err in l2 norm.  
+    """Print out the relative err in l2 norm.
+    
+    Arguments:
+        phi_direct: potential calculated by direct summation.
+        phi_tree: potential calculated by using treecode.
     """
     err = numpy.sqrt(sum((phi_direct-phi_tree)**2)/sum(phi_direct**2))
     print('L2 Norm error: {}'.format(err))
@@ -385,7 +388,11 @@ def l2_err(phi_direct, phi_tree):
 
 def plot_err(phi_direct, phi_tree): 
     
-    """Plot the relative error band.  
+    """Plot the relative error band. 
+    
+    Arguments:
+        phi_direct: potential calculated by direct summation.
+        phi_tree: potential calculated by using treecode.
     """
    
     # plotting the relative error band
@@ -404,6 +411,12 @@ def plot_err(phi_direct, phi_tree):
 
 
 def plot_dist(particles):
+    
+    '''Plot spatial particle distribution
+    
+    Arguments:
+        particles: the list of particles.
+    '''
     
     # plot spatial particle distribution
     fig = pyplot.figure(figsize=(10,4.5))
@@ -440,6 +453,12 @@ def plot_dist(particles):
 def read_particle(filename):
     
     """Read the particle information from the file, and return the list of particles.
+    
+    Arguments:
+        filename: name of the file we want to read.
+    
+    Returns:
+        particles: the list of particles.
     """
     
     file = open('test/' + filename, 'r')
@@ -456,6 +475,10 @@ def read_particle(filename):
 def write_result(phi, filename):
     
     """Write the potential values into a result file.
+    
+    Arguments:
+        phi: potential.
+        filename: name of the file we want to read.
     """
     
     file = open('test/' + filename, 'w')
@@ -464,11 +487,4 @@ def write_result(phi, filename):
     file.close()
 
 
-def speedup(t_tree, filename):
-    """Given the time elapsed in treecode and the test file name, return the speedup."""
-    time = {'cube100': 0.02318060398, 'cube1000': 2.0633965730, \
-            'cube10000': 0, 'ellipsoid100': 0.02169663906, \
-            'ellipsoid1000': 2.1566750526, 'ellipsoid10000': 0}
-    t_direct = time[filename]
-    return t_direct/t_tree
 
