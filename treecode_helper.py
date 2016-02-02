@@ -331,7 +331,7 @@ def evaluate(particles, p, i, cells, n_crit, theta):
                 
                 # near-field child cell
                 if cells[c].r > theta*r:
-                    eval_helper_nv(particles, c, i, cells, n_crit, theta)
+                    evaluate(particles, c, i, cells, n_crit, theta)
                 
                 # far-field child cell
                 else:
