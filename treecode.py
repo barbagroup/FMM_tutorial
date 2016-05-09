@@ -37,7 +37,7 @@ t_M2M = toc - tic
 
 # evaluate the potentials
 tic = time.time()
-eval_potential_nv(particles, cells, n_crit, theta)
+eval_potential(particles, cells, n_crit, theta)
 toc = time.time()
 t_eval = toc -tic
 
@@ -61,6 +61,3 @@ print("build tree: %f, %.2f %%" % (t_src, t_src/t_tree))
 print("P2M       : %f, %.2f %%" % (t_P2M, t_P2M/t_tree))
 print("M2M       : %f, %.2f %%" % (t_M2M, t_M2M/t_tree))
 print("eval phi  : %f. %.2f %%" % (t_eval, t_eval/t_tree))
-
-# calculate the speedup
-# print("speedup: %.2f" % speedup(t_tree, filename))
